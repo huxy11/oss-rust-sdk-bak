@@ -26,7 +26,7 @@ let mut oss_sub_resource = HashMap::new();
 oss_sub_resource.insert("acl", None);
 oss_sub_resource.insert("response-content-type", Some("ContentType"));
 
-let result = oss_instance.get_object("object", extar_header, oss_sub_resource);
+let result = oss_instance.get("object", extar_header, oss_sub_resource);
 /// or you may just get object
 /// let result = oss_instance.get_object("object", None, None);
 assert_eq!(result.is_ok(), true);
@@ -57,20 +57,11 @@ async fn async_get_object_demo() -> Reuslt<String, Error> {
 }
 ```
 
-## Put Object by file
-```rust
-use oss_rust_sdk::prelude::*;
-let filename = "filename";
-let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
-let result = oss_instance.put_object_from_file(filename, "object", None, None);
-assert_eq!(result.is_ok(), true)
-```
-
-## Put Ojbect by buffer
+## Put Ojbect
 ```rust
 let buffer = "some thing you want put to oss";
 let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
-let result = oss_instance.put_object_from_buffer(buffer.as_bytes(), "object", None, None);
+let result = oss_instance.put(buffer.as_bytes(), "object", None, None);
 assert_eq!(result.is_ok(), true)
 ```
 
@@ -84,19 +75,11 @@ headers.insert("content-type", "text/plain");
 oss_instance.async_put_object_from_buffer(buffer.as_bytes(),"your_object_name", headers,None).await?;
 ```
 
-## Copy Object
-```rust
-use oss_rust_sdk::prelude::*;
-let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
-let result = oss_instance.copy_object_from_object("src_object", "dest_object", None, None);
-assert_eq!(result.is_ok(), true)
-```
-
 ## Delete Ojbect
 ```rust
 use oss_rust_sdk::prelude::*;
 let oss_instance = OSS::new("your_AccessKeyId", "your_AccessKeySecret", "your_Endpoint", "your_Bucket");
-let result = oss_instance.delete_object("object");
+let result = oss_instance.del("object");
 assert_eq!(result.is_ok(), true)
 ```
 

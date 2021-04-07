@@ -1,19 +1,22 @@
+use quick_xml::Error as QxmlError;
 use reqwest::header::InvalidHeaderName as HttpInvalidHeaderNameError;
 use reqwest::header::InvalidHeaderValue as HttpInvalidHeaderValueError;
-use quick_xml::Error as QxmlError;
+use reqwest::header::ToStrError;
 use reqwest::Error as ReqwestError;
-use std::error::Error as StdError;
 use std::io::Error as IoError;
 use std::string::FromUtf8Error;
+use std::{error::Error as StdError, str::ParseBoolError};
 
 #[derive(Debug, Display)]
 pub enum Error {
+    Convert(ToStrError),
     Object(ObjectError),
     Io(IoError),
     String(FromUtf8Error),
     Reqwest(ReqwestError),
     Qxml(QxmlError),
     Http(HttpError),
+    ParseBool(ParseBoolError),
 }
 
 #[derive(Debug, Display)]
@@ -58,6 +61,18 @@ impl From<FromUtf8Error> for Error {
     }
 }
 
+impl From<ToStrError> for Error {
+    fn from(e: ToStrError) -> Error {
+        Error::Convert(e)
+    }
+}
+
+impl From<ParseBoolError> for Error {
+    fn from(e: ParseBoolError) -> Error {
+        Error::ParseBool(e)
+    }
+}
+
 #[derive(Debug, Display)]
 pub enum ObjectError {
     #[display(fmt = "PUT ERROR: {}", msg)]
@@ -68,6 +83,8 @@ pub enum ObjectError {
     CopyError { msg: String },
     #[display(fmt = "DELETE ERROR: {}", msg)]
     DeleteError { msg: String },
+    #[display(fmt = "HEAD ERROR: {}", msg)]
+    HeadError { msg: String },
 }
 
 impl StdError for Error {}

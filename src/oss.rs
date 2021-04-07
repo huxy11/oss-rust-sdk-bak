@@ -6,6 +6,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str;
 
+use crate::prelude::ListOptions;
+
 use super::auth::*;
 use super::utils::*;
 
@@ -18,7 +20,7 @@ pub struct OSS<'a> {
     pub client: Client,
 }
 
-const RESOURCES: [&str; 50] = [
+const RESOURCES: [&str; 51] = [
     "acl",
     "uploads",
     "location",
@@ -69,6 +71,7 @@ const RESOURCES: [&str; 50] = [
     "restore",
     "callback",
     "callback-var",
+    "continuation-token",
 ];
 
 impl<'a> OSS<'a> {
@@ -125,12 +128,78 @@ impl<'a> OSS<'a> {
         }
     }
 
+    pub fn signiture_url<U>(
+        &self,
+        object: &str,
+        expires: U,
+        verb: &str,
+    ) -> Result<String, super::errors::Error>
+    where
+        U: Into<Option<u64>>,
+    {
+        let date = self.date();
+
+        let mut headers = HeaderMap::new();
+        headers.insert(DATE, date.parse()?);
+        Ok(self.oss_sign_url(
+            verb,
+            self.key_id(),
+            self.key_secret(),
+            expires.into(),
+            self.bucket(),
+            object,
+            "",
+            &headers,
+        ))
+    }
     pub fn date(&self) -> String {
         let now: DateTime<Utc> = Utc::now();
         now.format("%a, %d %b %Y %T GMT").to_string()
     }
 
-    pub fn get_resources_str<S>(&self, params: HashMap<S, Option<S>>) -> String
+    pub fn get_params_str<S>(params: &HashMap<S, Option<S>>) -> String
+    where
+        S: AsRef<str>,
+    {
+        let mut resources: Vec<(&S, &Option<S>)> = params
+            .iter()
+            .filter(|(k, _)| RESOURCES.contains(&k.as_ref()))
+            .collect();
+        resources.sort_by(|a, b| a.0.as_ref().to_string().cmp(&b.0.as_ref().to_string()));
+        let mut result = String::new();
+        for (k, v) in resources {
+            if !result.is_empty() {
+                result += "&";
+            }
+            if let Some(vv) = v {
+                result += &format!("{}={}", k.as_ref().to_owned(), vv.as_ref());
+            } else {
+                result += k.as_ref();
+            }
+        }
+        result
+    }
+    pub fn get_list_2_params_str(opts: &ListOptions) -> (String, String) {
+        let mut params: Vec<(&str, &str)> = vec![];
+        params.push(("continuation-token", &opts.marker));
+        let resources = if opts.marker.is_empty() {
+            String::new()
+        } else {
+            format!("continuation-token={}", opts.marker)
+        };
+        params.push(("delimiter", &opts.delimiter));
+        params.push(("max-keys", &opts.max_keys));
+        params.push(("prefix", &opts.prefix));
+        let mut result = String::from("list-type=2");
+        for (k, v) in params {
+            if !v.is_empty() {
+                result += "&";
+                result += &format!("{}={}", k, v);
+            }
+        }
+        (result, resources)
+    }
+    pub fn get_resources_str<S>(&self, params: &HashMap<S, Option<S>>) -> String
     where
         S: AsRef<str>,
     {
@@ -164,7 +233,7 @@ impl<'a> OSS<'a> {
     {
         let object = object.as_ref();
         let resources_str = if let Some(r) = resources {
-            self.get_resources_str(r)
+            self.get_resources_str(&r)
         } else {
             String::new()
         };
@@ -210,7 +279,7 @@ impl<'a> OSS<'a> {
     {
         let object = object.as_ref();
         let resources_str = if let Some(r) = resources.into() {
-            self.get_resources_str(r)
+            self.get_resources_str(&r)
         } else {
             String::new()
         };
